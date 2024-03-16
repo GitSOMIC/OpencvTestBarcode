@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+  var PresentNumber=
+          [   "0001101","0100111","1110010",
+            "0011001","0110011","1100110",
+            "0010011","0011011","1101100",
+            "0111101","0100001","1000010",
+            "0100011","0011101","1011100",
+            "0110001","0111001","1001110",
+            "0101111","0000101","1010000",
+            "0111011","0010001","1000100",
+            "0110111","0001001","1001000",
+            "0001011","0010111","1110100"
+          ]
+
+
+  var version=[
+    ["A","A","A","A","A","A"],
+    ["A","A","B","A","B","B"],
+    ["A","A","B","B","A","B"],
+    ["A","A","B","B","B","A"],
+    ["A","B","A","A","B","B"],
+    ["A","B","B","A","A","B"],
+    ["A","B","B","B","A","A"],
+    ["A","B","A","B","A","B"],
+    ["A","B","A","B","B","A"],
+    ["A","B","B","A","B","A"]
+  ];
+
+  var oneLindeCode = new Array();
+
+  //识别条形码
+  function readCodeBar() {
+
+    //创建画布
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext('2d');
+
+    //读取图片
+    var myCodeBar = document.getElementById("input_image").files[0];
+    var reader = new FileReader();
+    reader.readAsDataURL(myCodeBar);
+
+    reader.onload = function (ev) {
+      var image = new Image();
+      image.src = ev.target.result;
+      image.onload = function () {
+
+        console.log("宽度"+this.width+"高度"+this.height);
+        ctx.drawImage(image,0,0,image.height,image.width);
+        var data = ctx.getImageData(0,0,image.width,image.height).data;
+        // console.log(data.toString());
+        var array = data;
+        var startI ,startJ,endJ;
+        var arrayPX = new Array();
+        for(var i=0;i<array.length/(4*image.width);i++){
+          for(var j=0;j<array.length/(4*image.height);j++){
+            if(data[4*i*image.width+j*4-4]===255&&data[4*i*image.width+j*4]===0){
+              startI=i;
+              startJ=j;
+              break;
+            }
+
+          }
+        }
+        for(var i=image.width*4-4;i>=0;i--){
+          for(var j=0;j<array.length/(4*image.height);j++){
+            if(data[4*i*image.width+j*4+4]===255&&data[4*i*image.width+j*4]===0){
+              endJ=j;
+              break;
+            }
+
+          }
+        }
+        for(var i=startJ;i<endJ;i++){
+          arrayPX.push(data[startI*4*image.width+i*4]);
+        }
+        // console.log(arrayPX.toString());
+        // arrayPX.push(data[4*i*image.width+j*4]);
+        var temp=arrayPX[0];
+        var j;
+        var basicLen;
+        for(j=1;j<arrayPX.length;j++){
+          if(Math.abs(arrayPX[j]-temp)>150){
+            basicLen=j;
+            oneLindeCode.push(1);
+            break;
+          }
+        }
+        var temponeCode=new Array();
+        for(var i=basicLen;i<arrayPX.length;i++){
+          var flag=1;
+          var temp = arrayPX[i];
+          var j;
+          for(j=i+1;j<arrayPX.length;j++){
+            if(Math.abs(arrayPX[j]-temp)>150){
+              flag=0;
+              break;
+            }
+          }
+          var length = j-i;
+          var dif = length/basicLen;
+          var thisLen;
+          if(dif<1.5&&dif>0.5){
+            thisLen=1;
+          }
+          else if(dif<2.5&&dif>1.5){
+            thisLen=2;
+          }
+          else if(dif<3.5&&dif>2.5){
+            thisLen=3;
+          }
+          else {
+            thisLen=4;
+          }
+          var bin;
+          if(Math.abs(temp-255)<=100)
+            bin=0;
+          else
+            bin=1;
+          for(var k=0;k<thisLen;k++){
+            temponeCode.push(bin);
+          }
+          i=j-1;
+        }
+        //生成正式的二进制代码
+        for(var i=0;i<94;i++){
+          oneLindeCode.push(temponeCode[i]);
+        }
+        console.log(oneLindeCode)
+        var codeBar=new Array();
+        var str = new String();
+        var tempVersion = new Array();
+        for(var i=3;i<45;i+=7){
+          str="";
+          for(var j=0;j<7;j++){
+            str+=oneLindeCode[i+j].toString();
+          }
+          console.log(str);
+          var index;
+          for(var k=0;k<30;k++){
+            if(str===PresentNumber[k]){
+              index=k;
+              break;
+            }
+          }
+          codeBar.push(parseInt((index+1)/3));
+          if(index%3===0){
+            tempVersion.push("A");
+          }
+          else if(index%3===1){
+            tempVersion.push("B");
+          }
+          else
+            tempVersion.push("C");
+        }
+        for(var i=50;i<92;i+=7){
+          str="";
+          for(var j=0;j<7;j++){
+            str+=oneLindeCode[i+j].toString();
+          }
+          console.log(str);
+          var index;
+          for(var k=0;k<30;k++){
+            if(str===PresentNumber[k]){
+              index=k;
+              break;
+            }
+          }
+          codeBar.push(parseInt((index)/3));
+        }
+        console.log(codeBar);
+        console.log(tempVersion);
+        var startCode;
+        for(var i=0;i<10;i++){
+          if(version[i].toString()==tempVersion.toString()){
+            startCode=i;
+            break;
+          }
+        }
+        var tempStr=new String();
+        tempStr+=startCode;
+        for(var i=0;i<12;i++){
+          tempStr+=codeBar[i];
+        }
+        $("#codeBar_content").val(tempStr)
+        // var data = ctxt.getImageData(0,0,this.width,this.height).data;
+        // console.log(data,data.toString());
+      }
+    }
+  }
+
+</script>
+</body>
+</html>
